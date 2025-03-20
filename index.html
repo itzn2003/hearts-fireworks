@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart and Fireworks Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas to full window size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Center of screen
+        let centerX = canvas.width / 2;
+        let centerY = canvas.height / 2;
+        
+        // Arrays to store hearts and fireworks
+        const hearts = [];
+        const fireworks = [];
+        
+        // Heart class
+        class Heart {
+            constructor() {
+                // Size of the central square area (30% of the smaller dimension)
+                const squareSize = Math.min(canvas.width, canvas.height) * 0.3;
+                
+                // Random position within the central square
+                this.x = centerX + (Math.random() - 0.5) * squareSize;
+                this.y = centerY + (Math.random() - 0.5) * squareSize;
+                
+                // Random velocity
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                
+                // Random size based on percentage of screen height
+                const minSizePercent = 0.25; // 25% of screen height
+                const maxSizePercent = 0.75; // 75% of screen height
+                const screenHeight = canvas.height;
+                this.size = (minSizePercent + Math.random() * (maxSizePercent - minSizePercent)) * screenHeight / 2;
+                
+                // Random color (bright and vibrant)
+                const hue = Math.floor(Math.random() * 360);
+                this.color = `hsl(${hue}, 100%, 70%)`;
+                
+                // Lifecycle
+                this.life = 100;
+                this.gravity = 0.1;
+                this.drag = 0.98;
+                this.alpha = 1;
+                
+                // Explosion particles
+                this.particles = [];
+                this.exploded = false;
+            }
+            
+            update() {
+                if (!this.exploded) {
+                    // Update position
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    
+                    // Apply gravity and drag
+                    this.vy += this.gravity;
+                    this.vx *= this.drag;
+                    this.vy *= this.drag;
+                    
+                    // Decrease life
+                    this.life -= 0.5;
+                    
+                    // Explode when life is low
+                    if (this.life < 20 && !this.particles.length) {
+                        this.explode();
+                    }
+                } else {
+                    // Update particles
+                    for (let i = 0; i < this.particles.length; i++) {
+                        const p = this.particles[i];
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += p.gravity;
+                        p.life -= 1;
+                        p.alpha = p.life / 30;
+                        
+                        // Remove dead particles
+                        if (p.life <= 0) {
+                            this.particles.splice(i, 1);
+                            i--;
+                        }
+                    }
+                }
+                
+                // Heart is dead when all particles are gone
+                return this.exploded && this.particles.length === 0;
+            }
+            
+            draw() {
+                if (!this.exploded) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.scale(this.size / 30, this.size / 30);
+                    ctx.beginPath();
+                    
+                    // Draw heart shape
+                    ctx.moveTo(0, 0);
+                    ctx.bezierCurveTo(-10, -10, -20, 0, 0, 20);
+                    ctx.bezierCurveTo(20, 0, 10, -10, 0, 0);
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.globalAlpha = this.life / 100;
+                    ctx.fill();
+                    ctx.restore();
+                } else {
+                    // Draw particles
+                    for (const p of this.particles) {
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.scale(p.size / 30, p.size / 30);
+                        ctx.beginPath();
+                        
+                        // Draw small heart shape
+                        ctx.moveTo(0, 0);
+                        ctx.bezierCurveTo(-5, -5, -10, 0, 0, 10);
+                        ctx.bezierCurveTo(10, 0, 5, -5, 0, 0);
+                        
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = p.alpha;
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+            }
+            
+            explode() {
+                this.exploded = true;
+                
+                // Create explosion particles
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2;
+                    const speed = Math.random() * 3 + 2;
+                    
+                    this.particles.push({
+                        x: this.x,
+                        y: this.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: this.size * 0.4,
+                        color: this.color,
+                        life: 30,
+                        alpha: 1,
+                        gravity: 0.05
+                    });
+                }
+            }
+        }
+        
+        // Firework class
+        class Firework {
+            constructor() {
+                // Start at bottom of screen with random x position
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height;
+                
+                // Target height is top 1/3 of screen
+                const targetY = canvas.height * (Math.random() * 0.3);
+                
+                // Calculate velocity to reach target
+                this.vy = -Math.sqrt(2 * 0.2 * (this.y - targetY));
+                this.vx = (Math.random() - 0.5) * 2;
+                
+                // Random color
+                const hue = Math.floor(Math.random() * 360);
+                this.color = `hsl(${hue}, 100%, 60%)`;
+                
+                // Lifecycle
+                this.gravity = 0.2;
+                this.particles = [];
+                this.exploded = false;
+                
+                // Trail
+                this.trail = [];
+                this.trailLength = 5;
+            }
+            
+            update() {
+                if (!this.exploded) {
+                    // Add current position to trail
+                    this.trail.push({ x: this.x, y: this.y });
+                    
+                    // Limit trail length
+                    if (this.trail.length > this.trailLength) {
+                        this.trail.shift();
+                    }
+                    
+                    // Update position
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    
+                    // Apply gravity
+                    this.vy += this.gravity;
+                    
+                    // Explode when reaching apex (velocity changes from negative to positive)
+                    if (this.vy >= 0 && !this.exploded) {
+                        this.explode();
+                    }
+                } else {
+                    // Update particles
+                    for (let i = 0; i < this.particles.length; i++) {
+                        const p = this.particles[i];
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += p.gravity;
+                        p.life -= 1;
+                        p.alpha = p.life / 50;
+                        
+                        // Remove dead particles
+                        if (p.life <= 0) {
+                            this.particles.splice(i, 1);
+                            i--;
+                        }
+                    }
+                }
+                
+                // Firework is dead when all particles are gone
+                return this.exploded && this.particles.length === 0;
+            }
+            
+            draw() {
+                if (!this.exploded) {
+                    // Draw trail
+                    for (let i = 0; i < this.trail.length; i++) {
+                        const point = this.trail[i];
+                        const alpha = i / this.trail.length;
+                        
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+                        ctx.fillStyle = this.color;
+                        ctx.globalAlpha = alpha;
+                        ctx.fill();
+                    }
+                    
+                    // Draw rocket
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'white';
+                    ctx.globalAlpha = 1;
+                    ctx.fill();
+                } else {
+                    // Draw particles
+                    for (const p of this.particles) {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = p.alpha;
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            explode() {
+                this.exploded = true;
+                
+                // Create explosion particles
+                const particleCount = 100;
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = (i / particleCount) * Math.PI * 2;
+                    const speed = Math.random() * 5 + 2;
+                    
+                    // Add some random variation to the angle
+                    const randomAngle = angle + (Math.random() - 0.5) * 0.5;
+                    
+                    this.particles.push({
+                        x: this.x,
+                        y: this.y,
+                        vx: Math.cos(randomAngle) * speed,
+                        vy: Math.sin(randomAngle) * speed,
+                        color: this.color,
+                        life: 50 + Math.random() * 30,
+                        alpha: 1,
+                        gravity: 0.1
+                    });
+                }
+            }
+        }
+        
+        // Animation loop
+        function animate() {
+            // Create new hearts (adjusted to be 1.5 times slower than original)
+            if (Math.random() < 0.033) {
+                hearts.push(new Heart());
+            }
+            
+            // Create occasional very large hearts
+            if (Math.random() < 0.005) {
+                const giantHeart = new Heart();
+                // Make the heart much larger (up to 90% of screen height)
+                giantHeart.size = canvas.height * (0.8 + Math.random() * 0.1);
+                // Slower movement for giant hearts
+                giantHeart.vx *= 0.5;
+                giantHeart.vy *= 0.5;
+                hearts.push(giantHeart);
+            }
+            
+            // Create new fireworks
+            if (Math.random() < 0.02) {
+                fireworks.push(new Firework());
+            }
+            
+            // Clear canvas with faster fading effect for trails
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw hearts
+            for (let i = 0; i < hearts.length; i++) {
+                const heart = hearts[i];
+                const isDead = heart.update();
+                heart.draw();
+                
+                // Remove dead hearts
+                if (isDead) {
+                    hearts.splice(i, 1);
+                    i--;
+                }
+            }
+            
+            // Update and draw fireworks
+            for (let i = 0; i < fireworks.length; i++) {
+                const firework = fireworks[i];
+                const isDead = firework.update();
+                firework.draw();
+                
+                // Remove dead fireworks
+                if (isDead) {
+                    fireworks.splice(i, 1);
+                    i--;
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            // Update center coordinates
+            centerX = canvas.width / 2;
+            centerY = canvas.height / 2;
+        });
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
