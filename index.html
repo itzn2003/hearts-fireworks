@@ -14,12 +14,111 @@
         canvas {
             display: block;
         }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 100;
+        }
+        .slider-container {
+            margin-bottom: 10px;
+        }
+        label {
+            display: inline-block;
+            width: 180px;
+        }
+        input[type="range"] {
+            width: 150px;
+            vertical-align: middle;
+        }
+        .value-display {
+            display: inline-block;
+            width: 40px;
+            text-align: right;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+        <div class="slider-container">
+            <label for="heartRate">Heart Generation Rate:</label>
+            <input type="range" id="heartRate" min="0.005" max="0.1" step="0.005" value="0.033">
+            <span id="heartRateValue" class="value-display">0.033</span>
+        </div>
+        <div class="slider-container">
+            <label for="minHeartSize">Minimum Heart Size (%):</label>
+            <input type="range" id="minHeartSize" min="5" max="50" step="5" value="25">
+            <span id="minHeartSizeValue" class="value-display">25%</span>
+        </div>
+        <div class="slider-container">
+            <label for="maxHeartSize">Maximum Heart Size (%):</label>
+            <input type="range" id="maxHeartSize" min="30" max="100" step="5" value="75">
+            <span id="maxHeartSizeValue" class="value-display">75%</span>
+        </div>
+        <div class="slider-container">
+            <label for="giantHeartRate">Giant Heart Rate:</label>
+            <input type="range" id="giantHeartRate" min="0.001" max="0.02" step="0.001" value="0.005">
+            <span id="giantHeartRateValue" class="value-display">0.005</span>
+        </div>
+        <div class="slider-container">
+            <label for="giantHeartSize">Giant Heart Size (%):</label>
+            <input type="range" id="giantHeartSize" min="50" max="100" step="5" value="85">
+            <span id="giantHeartSizeValue" class="value-display">85%</span>
+        </div>
+    </div>
 
     <script>
+        // UI Controls
+        const heartRateSlider = document.getElementById('heartRate');
+        const heartRateValue = document.getElementById('heartRateValue');
+        const minHeartSizeSlider = document.getElementById('minHeartSize');
+        const minHeartSizeValue = document.getElementById('minHeartSizeValue');
+        const maxHeartSizeSlider = document.getElementById('maxHeartSize');
+        const maxHeartSizeValue = document.getElementById('maxHeartSizeValue');
+        const giantHeartRateSlider = document.getElementById('giantHeartRate');
+        const giantHeartRateValue = document.getElementById('giantHeartRateValue');
+        const giantHeartSizeSlider = document.getElementById('giantHeartSize');
+        const giantHeartSizeValue = document.getElementById('giantHeartSizeValue');
+        
+        // Update display values
+        heartRateSlider.addEventListener('input', () => {
+            heartRateValue.textContent = heartRateSlider.value;
+        });
+        
+        minHeartSizeSlider.addEventListener('input', () => {
+            minHeartSizeValue.textContent = `${minHeartSizeSlider.value}%`;
+            // Ensure min is less than max
+            if (parseInt(minHeartSizeSlider.value) >= parseInt(maxHeartSizeSlider.value)) {
+                maxHeartSizeSlider.value = parseInt(minHeartSizeSlider.value) + 5;
+                maxHeartSizeValue.textContent = `${maxHeartSizeSlider.value}%`;
+            }
+        });
+        
+        maxHeartSizeSlider.addEventListener('input', () => {
+            maxHeartSizeValue.textContent = `${maxHeartSizeSlider.value}%`;
+            // Ensure max is greater than min
+            if (parseInt(maxHeartSizeSlider.value) <= parseInt(minHeartSizeSlider.value)) {
+                minHeartSizeSlider.value = parseInt(maxHeartSizeSlider.value) - 5;
+                minHeartSizeValue.textContent = `${minHeartSizeSlider.value}%`;
+            }
+        });
+        
+        giantHeartRateSlider.addEventListener('input', () => {
+            giantHeartRateValue.textContent = giantHeartRateSlider.value;
+        });
+        
+        giantHeartSizeSlider.addEventListener('input', () => {
+            giantHeartSizeValue.textContent = `${giantHeartSizeSlider.value}%`;
+        });
+        
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
@@ -50,8 +149,8 @@
                 this.vy = (Math.random() - 0.5) * 8;
                 
                 // Random size based on percentage of screen height
-                const minSizePercent = 0.25; // 25% of screen height
-                const maxSizePercent = 0.75; // 75% of screen height
+                const minSizePercent = parseInt(minHeartSizeSlider.value) / 100; // Min size from slider
+                const maxSizePercent = parseInt(maxHeartSizeSlider.value) / 100; // Max size from slider
                 const screenHeight = canvas.height;
                 this.size = (minSizePercent + Math.random() * (maxSizePercent - minSizePercent)) * screenHeight / 2;
                 
@@ -301,16 +400,16 @@
         
         // Animation loop
         function animate() {
-            // Create new hearts (adjusted to be 1.5 times slower than original)
-            if (Math.random() < 0.033) {
+            // Create new hearts (rate controlled by slider)
+            if (Math.random() < parseFloat(heartRateSlider.value)) {
                 hearts.push(new Heart());
             }
             
-            // Create occasional very large hearts
-            if (Math.random() < 0.005) {
+            // Create occasional very large hearts (rate controlled by slider)
+            if (Math.random() < parseFloat(giantHeartRateSlider.value)) {
                 const giantHeart = new Heart();
-                // Make the heart much larger (up to 90% of screen height)
-                giantHeart.size = canvas.height * (0.8 + Math.random() * 0.1);
+                // Make the heart much larger (size controlled by slider)
+                giantHeart.size = canvas.height * (parseInt(giantHeartSizeSlider.value) / 100);
                 // Slower movement for giant hearts
                 giantHeart.vx *= 0.5;
                 giantHeart.vy *= 0.5;
